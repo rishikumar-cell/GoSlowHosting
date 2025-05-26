@@ -23,8 +23,8 @@ const LoginScreen = () => {
       return;
     }
 
-    // Placeholder login action (Firebase will be added later)
-    Alert.alert('Login', `Email: ${email}\nPassword: ${password}`);
+    // ✅ Navigate to HomeScreen after validation
+    navigation.navigate('HomeScreen');
   };
 
   return (
@@ -33,7 +33,7 @@ const LoginScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <Image
-        source={require('../../assets/logo.png')} // <- place your SG logo here
+        source={require('../../assets/logo.png')} // Make sure this path is correct
         style={styles.logo}
         resizeMode="contain"
       />
@@ -129,6 +129,7 @@ const styles = StyleSheet.create({
 });
 
 export default LoginScreen;
+
 
 
 

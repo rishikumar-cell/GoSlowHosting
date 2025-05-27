@@ -4,11 +4,13 @@ import MapView, { Marker } from 'react-native-maps';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import MapViewDirections from 'react-native-maps-directions';
 import Geolocation from '@react-native-community/geolocation';
+import { useNavigation } from '@react-navigation/native';
 
 const GOOGLE_API_KEY = 'AIzaSyDgeazKbpGJ-GQIDolhkfgDk2XfTbrBKcs';
 
 const HomeScreen = () => {
   const mapRef = useRef(null);
+  const navigation = useNavigation();
   const [origin, setOrigin] = useState(null);
   const [destination, setDestination] = useState(null);
   const [speed, setSpeed] = useState(0);
@@ -23,7 +25,13 @@ const HomeScreen = () => {
           Geolocation.watchPosition(
             position => {
               const { coords } = position;
-              setSpeed(Math.round(coords.speed * 3.6)); // m/s to km/h
+              const currentSpeed = Math.round(coords.speed * 3.6); // m/s to km/h
+              setSpeed(currentSpeed);
+
+              if (currentSpeed > 10) {
+                navigation.navigate('SpeedAlert');
+              }
+
               if (!origin) {
                 setOrigin({
                   latitude: coords.latitude,
@@ -46,7 +54,7 @@ const HomeScreen = () => {
     };
 
     requestLocationPermission();
-  }, );
+  }, [navigation, origin]);
 
   return (
     <View style={styles.container}>
@@ -161,3 +169,4 @@ const autoCompleteStyles = {
     fontSize: 16,
   },
 };
+

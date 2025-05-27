@@ -7,6 +7,7 @@ import SplashScreen from './src/screens/SplashScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import SpeedAlert from './src/screens/SpeedAlert';
 
 const Stack = createNativeStackNavigator();
 
@@ -34,6 +35,11 @@ export default function AppNavigator() {
           name="Home"
           component={HomeScreen}
           options={{ title : 'Home'}}
+          />
+          <Stack.Screen
+          name="SpeedAlert"
+          component={SpeedAlert}
+          options={{ title: 'SpeedAlert'}}
           />
       </Stack.Navigator>
     </NavigationContainer>

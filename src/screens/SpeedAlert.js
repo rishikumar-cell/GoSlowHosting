@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, Alert, StyleSheet } from 'react-native';
+import { View, Text, Alert, Image, StyleSheet } from 'react-native';
 import Sound from 'react-native-sound';
 
 // Set category so it plays even in silent mode (iOS-safe)
@@ -29,7 +29,9 @@ const SpeedAlert = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Speed Alert Activated</Text>
+      <Image source={require('../../assets/speed-alert.png')}
+      style={styles.Image}/>
+      <Text style={styles.title}>Speed Alert Activated </Text>
     </View>
   );
 };
@@ -44,6 +46,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
+    image: {
+      width: 75,
+      height: 70,
+    },
   },
 });
 

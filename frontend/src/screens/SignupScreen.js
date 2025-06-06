@@ -24,7 +24,7 @@ const SignupScreen = ({ navigation }) => {
       <StatusBar barStyle="light-content" backgroundColor="#000" />
 
       <Image
-        source={require('../../assets/logo.png')} // Place logo in /assets/logo.png
+        source={require('../../android/app/src/main/assets/logo.png')} // Place logo in /assets/logo.png
         style={styles.logo}
       />
 

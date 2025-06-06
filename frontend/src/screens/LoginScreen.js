@@ -33,7 +33,7 @@ const LoginScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <Image
-        source={require('../../assets/logo.png')} // Make sure this path is correct
+        source={require('../../android/app/src/main/assets/logo.png')} // Make sure this path is correct
         style={styles.logo}
         resizeMode="contain"
       />

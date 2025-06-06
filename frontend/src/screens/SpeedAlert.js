@@ -10,14 +10,14 @@ const SpeedAlert = () => {
     // Load sound from android/app/src/main/res/raw/alert.mp3
     const alertSound = new Sound('alert', Sound.MAIN_BUNDLE, (error) => {
       if (error) {
-        console.log('❌ Failed to load sound:', error);
+        console.log(' Failed to load sound:', error);
         return;
       }
 
       // Play sound
       alertSound.play((success) => {
         if (!success) {
-          console.log('❌ Playback failed');
+          console.log(' Playback failed');
         }
       });
     });
@@ -31,7 +31,7 @@ const SpeedAlert = () => {
   return (
     <View style={styles.container}>
       <Image
-        source={require('../../assets/speed-alert.png')}
+        source={require('../../android/app/src/main/assets/speed-alert.png')}
         style={styles.image}
       />
       <Text style={styles.title}>⚠ Speed Alert Activated</Text>

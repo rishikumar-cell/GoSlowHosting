@@ -37,6 +37,7 @@ const LoginScreen = () => {
         style={styles.logo}
         resizeMode="contain"
       />
+      
       <Text style={styles.title}>Login</Text>
 
       <TextInput

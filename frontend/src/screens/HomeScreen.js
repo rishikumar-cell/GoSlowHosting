@@ -1,60 +1,120 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, PermissionsAndroid, Text } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  PermissionsAndroid,
+  Text,
+  TouchableOpacity,
+  Platform,
+  Alert,
+} from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
-import MapViewDirections from 'react-native-maps-directions';
 import Geolocation from '@react-native-community/geolocation';
 import { useNavigation } from '@react-navigation/native';
 
-const GOOGLE_API_KEY = 'AIzaSyDgeazKbpGJ-GQIDolhkfgDk2XfTbrBKcs';
-
 const HomeScreen = () => {
   const mapRef = useRef(null);
+  const watchId = useRef(null);
   const navigation = useNavigation();
+
+  const [tracking, setTracking] = useState(false);
   const [origin, setOrigin] = useState(null);
-  const [destination, setDestination] = useState(null);
   const [speed, setSpeed] = useState(0);
+  const [alerted, setAlerted] = useState(false);
+ const BACKEND_URL = 'http://192.168.55.251:8000/update-location/';
+const START_RIDE_URL = 'http://192.168.55.251:8000/start-ride/';
+const STOP_RIDE_URL = 'http://192.168.55.251:8000/stop-ride/';
+ const BIKE_ID = 'bike001';
 
   useEffect(() => {
-    const requestLocationPermission = async () => {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        );
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          Geolocation.watchPosition(
-            position => {
-              const { coords } = position;
-              const currentSpeed = Math.round(coords.speed * 3.6); // m/s to km/h
-              setSpeed(currentSpeed);
-
-              if (currentSpeed > 10) {
-                navigation.navigate('SpeedAlert');
-              }
-
-              if (!origin) {
-                setOrigin({
-                  latitude: coords.latitude,
-                  longitude: coords.longitude,
-                });
-              }
-            },
-            error => console.log(error),
-            {
-              enableHighAccuracy: true,
-              distanceFilter: 1,
-              interval: 1000,
-              fastestInterval: 500,
-            },
-          );
-        }
-      } catch (err) {
-        console.warn(err);
-      }
-    };
-
     requestLocationPermission();
-  }, [navigation, origin]);
+  }, []);
+
+  const requestLocationPermission = async () => {
+    if (Platform.OS === 'android') {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+      );
+      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        Alert.alert('Location permission is required');
+      }
+    }
+  };
+
+  const startTracking = async () => {
+    try {
+      await fetch(START_RIDE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bike_id: BIKE_ID }),
+      });
+    } catch (err) {
+      console.log('Start ride error:', err);
+    }
+
+    setTracking(true);
+    setAlerted(false);
+
+    watchId.current = Geolocation.watchPosition(
+      async (position) => {
+        const { latitude, longitude, speed } = position.coords;
+        setOrigin({ latitude, longitude });
+
+        const speedKmh = Math.round((speed || 0) * 3.6);
+        setSpeed(speedKmh);
+
+        try {
+          const response = await fetch(BACKEND_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              bike_id: BIKE_ID,
+              latitude,
+              longitude,
+            }),
+          });
+
+
+          const data = await response.json();
+          console.log('✅ Backend response:', data);
+
+          if (data.alert && !alerted) {
+            setAlerted(true);
+            navigation.navigate('SpeedAlert');
+          }
+        } catch (error) {
+          console.log('Location send error:', error);
+        }
+      },
+      (error) => console.log('Watch error:', error),
+      {
+        enableHighAccuracy: true,
+        distanceFilter: 1,
+        interval: 2000,
+        fastestInterval: 1000,
+      }
+    );
+  };
+
+  const stopTracking = async () => {
+    try {
+      await fetch(STOP_RIDE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bike_id: BIKE_ID }),
+      });
+    } catch (err) {
+      console.log('Stop ride error:', err);
+    }
+
+    setTracking(false);
+    setAlerted(false);
+    if (watchId.current) {
+      Geolocation.clearWatch(watchId.current);
+    }
+    setSpeed(0);
+    setOrigin(null);
+  };
 
   return (
     <View style={styles.container}>
@@ -62,69 +122,50 @@ const HomeScreen = () => {
         ref={mapRef}
         style={StyleSheet.absoluteFill}
         showsUserLocation
-        initialRegion={{
-          latitude: 28.6139,
-          longitude: 77.2090,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
-        }}
+        region={
+          origin
+            ? {
+                latitude: origin.latitude,
+                longitude: origin.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              }
+            : {
+                latitude: 28.6139,
+                longitude: 77.2090,
+                latitudeDelta: 0.05,
+                longitudeDelta: 0.05,
+              }
+        }
       >
-        {origin && <Marker coordinate={origin} title="Origin" />}
-        {destination && <Marker coordinate={destination} title="Destination" />}
-
-        {origin && destination && (
-          <MapViewDirections
-            origin={origin}
-            destination={destination}
-            apikey={GOOGLE_API_KEY}
-            strokeWidth={4}
-            strokeColor="blue"
-            onReady={result => {
-              mapRef.current.fitToCoordinates(result.coordinates, {
-                edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
-              });
-            }}
-          />
-        )}
+        {origin && <Marker coordinate={origin} title="Current Location" />}
       </MapView>
 
-      <View style={styles.searchContainer}>
-        <GooglePlacesAutocomplete
-          placeholder="From..."
-          onPress={(data, details = null) => {
-            const loc = details.geometry.location;
-            setOrigin({ latitude: loc.lat, longitude: loc.lng });
-          }}
-          fetchDetails
-          query={{ key: GOOGLE_API_KEY, language: 'en' }}
-          styles={autoCompleteStyles}
-          enablePoweredByContainer={false}
-          textInputProps={{
-            placeholderTextColor: '#000',
-          }}
-          predefinedPlaces={[]}
-        />
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.button, tracking && styles.disabledButton]}
+          onPress={startTracking}
+          disabled={tracking}
+        >
+          <Text style={styles.buttonText}>ON</Text>
+        </TouchableOpacity>
 
-        <GooglePlacesAutocomplete
-          placeholder="To..."
-          onPress={(data, details = null) => {
-            const loc = details.geometry.location;
-            setDestination({ latitude: loc.lat, longitude: loc.lng });
-          }}
-          fetchDetails
-          query={{ key: GOOGLE_API_KEY, language: 'en' }}
-          styles={autoCompleteStyles}
-          enablePoweredByContainer={false}
-          textInputProps={{
-            placeholderTextColor: '#000',
-          }}
-          predefinedPlaces={[]}
-        />
+        <TouchableOpacity
+          style={[styles.button, !tracking && styles.disabledButton]}
+          onPress={stopTracking}
+          disabled={!tracking}
+        >
+          <Text style={styles.buttonText}>OFF</Text>
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.speedContainer}>
-        <Text style={styles.speedText}>{speed} km/h</Text>
-      </View>
+      {tracking && (
+        <View style={styles.speedCircle}>
+          <Text style={styles.speedLabel}>Speed</Text>
+          <Text style={styles.speedValue}>{speed}</Text>
+          <Text style={styles.unit}>km/h</Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -132,41 +173,52 @@ const HomeScreen = () => {
 export default HomeScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  searchContainer: {
+  container: { flex: 1 },
+  buttonContainer: {
     position: 'absolute',
     top: 40,
-    width: '90%',
-    alignSelf: 'center',
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
     zIndex: 999,
   },
-  speedContainer: {
+  button: {
+    backgroundColor: '#0A84FF',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 30,
+    elevation: 4,
+  },
+  disabledButton: {
+    backgroundColor: '#AAB2BD',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  speedCircle: {
     position: 'absolute',
     bottom: 60,
     left: 20,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 10,
-    borderRadius: 10,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#000000aa',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  speedText: {
+  speedLabel: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 14,
+  },
+  speedValue: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  unit: {
+    color: '#ccc',
+    fontSize: 12,
   },
 });
-
-const autoCompleteStyles = {
-  container: {
-    flex: 0,
-    marginBottom: 10,
-  },
-  textInput: {
-    height: 44,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    backgroundColor: '#fff',
-    fontSize: 16,
-  },
-};
-

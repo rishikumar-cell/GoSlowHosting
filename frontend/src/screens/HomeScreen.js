@@ -21,9 +21,9 @@ const HomeScreen = () => {
   const [origin, setOrigin] = useState(null);
   const [speed, setSpeed] = useState(0);
   const [alerted, setAlerted] = useState(false);
- const BACKEND_URL = 'http://192.168.55.251:8000/update-location/';
-const START_RIDE_URL = 'http://192.168.55.251:8000/start-ride/';
-const STOP_RIDE_URL = 'http://192.168.55.251:8000/stop-ride/';
+ const BACKEND_URL = 'http://192.168.55.172:8000/update-location/';
+const START_RIDE_URL = 'http://192.168.55.172:8000/start-ride/';
+const STOP_RIDE_URL = 'http://192.168.55.172:8000/stop-ride/';
  const BIKE_ID = 'bike001';
 
   useEffect(() => {
@@ -71,6 +71,7 @@ const STOP_RIDE_URL = 'http://192.168.55.251:8000/stop-ride/';
               bike_id: BIKE_ID,
               latitude,
               longitude,
+              speed:speedKmh,
             }),
           });
 

@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  TextInput,
+  Modal,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import Geolocation from '@react-native-community/geolocation';
@@ -21,12 +23,10 @@ const HomeScreen = () => {
   const [origin, setOrigin] = useState(null);
   const [speed, setSpeed] = useState(0);
   const [alerted, setAlerted] = useState(false);
+  const [bikeId, setBikeId] = useState('');
+  const [showModal, setShowModal] = useState(true); // Show bike ID input modal
 
-  const USER_ID = 'bike001';
-  const BACKEND_URL = 'http://192.168.168.172:8000/update-location/';
-  const ALERT_URL = `http://192.168.168.172:8000/check-alert/${USER_ID}/`;
-  const START_RIDE_URL = 'http://192.168.168.172:8000/start-ride/';
-  const STOP_RIDE_URL = 'http://192.168.168.172:8000/stop-ride/';
+  const BACKEND_BASE = 'http://192.168.74.251:8000';
 
   useEffect(() => {
     requestLocationPermission();
@@ -52,10 +52,10 @@ const HomeScreen = () => {
     setAlerted(false);
 
     try {
-      await fetch(START_RIDE_URL, {
+      await fetch(`${BACKEND_BASE}/start-ride/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bike_id: USER_ID }),
+        body: JSON.stringify({ bike_id: bikeId }),
       });
     } catch (err) {
       console.log('Start ride error:', err);
@@ -70,18 +70,18 @@ const HomeScreen = () => {
         setSpeed(speedKmh);
 
         try {
-          await fetch("http:192.168.168.172:8000/update-location/", {
+          await fetch(`${BACKEND_BASE}/update-location/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              bike_id: "bike001",
+              bike_id: bikeId,
               latitude,
               longitude,
               speed: speedKmh,
             }),
           });
 
-          const alertRes = await fetch(ALERT_URL);
+          const alertRes = await fetch(`${BACKEND_BASE}/check-alert/${bikeId}/`);
           const alertData = await alertRes.json();
 
           if (alertData.alert && !alerted) {
@@ -114,10 +114,10 @@ const HomeScreen = () => {
     }
 
     try {
-      await fetch(STOP_RIDE_URL, {
+      await fetch(`${BACKEND_BASE}/stop-ride/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bike_id: USER_ID }),
+        body: JSON.stringify({ bike_id: bikeId }),
       });
     } catch (err) {
       console.log('Stop ride error:', err);
@@ -126,6 +126,33 @@ const HomeScreen = () => {
 
   return (
     <View style={styles.container}>
+      {/* Bike ID Input Modal */}
+      <Modal visible={showModal} transparent animationType="slide">
+        <View style={styles.modalBackground}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Enter Your Bike ID</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., bike001"
+              value={bikeId}
+              onChangeText={setBikeId}
+            />
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => {
+                if (bikeId.trim() !== '') {
+                  setShowModal(false);
+                } else {
+                  Alert.alert('Please enter a valid Bike ID');
+                }
+              }}
+            >
+              <Text style={styles.modalButtonText}>Confirm</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
@@ -170,7 +197,7 @@ const HomeScreen = () => {
 
       {tracking && (
         <View style={styles.speedCircle}>
-          <Text style={styles.speedLabel}>Speed </Text>
+          <Text style={styles.speedLabel}>Speed</Text>
           <Text style={styles.speedValue}>{speed}</Text>
           <Text style={styles.unit}>km/h</Text>
         </View>
@@ -230,6 +257,42 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontSize: 12,
   },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: '#000000aa',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBox: {
+    width: 300,
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    elevation: 10,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    marginBottom: 12,
+    fontWeight: 'bold',
+  },
+  input: {
+    width: '100%',
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 10,
+    marginBottom: 15,
+  },
+  modalButton: {
+    backgroundColor: '#0A84FF',
+    padding: 10,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
 });
-
-

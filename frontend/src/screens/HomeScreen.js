@@ -21,100 +21,107 @@ const HomeScreen = () => {
   const [origin, setOrigin] = useState(null);
   const [speed, setSpeed] = useState(0);
   const [alerted, setAlerted] = useState(false);
- const BACKEND_URL = 'http://192.168.55.172:8000/update-location/';
-const START_RIDE_URL = 'http://192.168.55.172:8000/start-ride/';
-const STOP_RIDE_URL = 'http://192.168.55.172:8000/stop-ride/';
- const BIKE_ID = 'bike001';
+
+  const USER_ID = 'bike001';
+  const BACKEND_URL = 'http://192.168.168.172:8000/update-location/';
+  const ALERT_URL = `http://192.168.168.172:8000/check-alert/${USER_ID}/`;
+  const START_RIDE_URL = 'http://192.168.168.172:8000/start-ride/';
+  const STOP_RIDE_URL = 'http://192.168.168.172:8000/stop-ride/';
 
   useEffect(() => {
     requestLocationPermission();
   }, []);
 
   const requestLocationPermission = async () => {
-    if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
-      );
-      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        Alert.alert('Location permission is required');
+    try {
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          Alert.alert('Location permission is required');
+        }
       }
+    } catch (err) {
+      console.warn('Permission error:', err);
     }
   };
 
   const startTracking = async () => {
+    setTracking(true);
+    setAlerted(false);
+
     try {
       await fetch(START_RIDE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bike_id: BIKE_ID }),
+        body: JSON.stringify({ bike_id: USER_ID }),
       });
     } catch (err) {
       console.log('Start ride error:', err);
     }
 
-    setTracking(true);
-    setAlerted(false);
-
     watchId.current = Geolocation.watchPosition(
       async (position) => {
-        const { latitude, longitude, speed } = position.coords;
-        setOrigin({ latitude, longitude });
+        const { latitude, longitude, speed: rawSpeed } = position.coords;
+        const speedKmh = Math.round((rawSpeed || 0) * 3.6);
 
-        const speedKmh = Math.round((speed || 0) * 3.6);
+        setOrigin({ latitude, longitude });
         setSpeed(speedKmh);
 
         try {
-          const response = await fetch(BACKEND_URL, {
+          await fetch("http:192.168.168.172:8000/update-location/", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              bike_id: BIKE_ID,
+              bike_id: "bike001",
               latitude,
               longitude,
-              speed:speedKmh,
+              speed: speedKmh,
             }),
           });
 
+          const alertRes = await fetch(ALERT_URL);
+          const alertData = await alertRes.json();
 
-          const data = await response.json();
-          console.log('✅ Backend response:', data);
-
-          if (data.alert && !alerted) {
+          if (alertData.alert && !alerted) {
             setAlerted(true);
             navigation.navigate('SpeedAlert');
           }
-        } catch (error) {
-          console.log('Location send error:', error);
+        } catch (err) {
+          console.log('Location update or alert fetch error:', err);
         }
       },
       (error) => console.log('Watch error:', error),
       {
         enableHighAccuracy: true,
-        distanceFilter: 1,
+        distanceFilter: 0,
         interval: 2000,
         fastestInterval: 1000,
+        useSignificantChanges: false,
       }
     );
   };
 
   const stopTracking = async () => {
+    setTracking(false);
+    setAlerted(false);
+    setSpeed(0);
+    setOrigin(null);
+
+    if (watchId.current !== null) {
+      Geolocation.clearWatch(watchId.current);
+    }
+
     try {
       await fetch(STOP_RIDE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bike_id: BIKE_ID }),
+        body: JSON.stringify({ bike_id: USER_ID }),
       });
     } catch (err) {
       console.log('Stop ride error:', err);
     }
-
-    setTracking(false);
-    setAlerted(false);
-    if (watchId.current) {
-      Geolocation.clearWatch(watchId.current);
-    }
-    setSpeed(0);
-    setOrigin(null);
   };
 
   return (
@@ -123,6 +130,7 @@ const STOP_RIDE_URL = 'http://192.168.55.172:8000/stop-ride/';
         ref={mapRef}
         style={StyleSheet.absoluteFill}
         showsUserLocation
+        followsUserLocation
         region={
           origin
             ? {
@@ -162,7 +170,7 @@ const STOP_RIDE_URL = 'http://192.168.55.172:8000/stop-ride/';
 
       {tracking && (
         <View style={styles.speedCircle}>
-          <Text style={styles.speedLabel}>Speed</Text>
+          <Text style={styles.speedLabel}>Speed </Text>
           <Text style={styles.speedValue}>{speed}</Text>
           <Text style={styles.unit}>km/h</Text>
         </View>
@@ -223,3 +231,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 });
+
+

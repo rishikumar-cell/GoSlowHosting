@@ -6,7 +6,7 @@ import random
 URL = "http://127.0.0.1:8000/update-location/"
 
 # Simulate 2 bikes with movement\
-speed = random.randint(40, 70)  # km/h
+speed = random.randint(5, 20)  # km/h
 
 bikes = {
     "bike001": [12.9716, 77.5946],
@@ -22,7 +22,7 @@ while True:
         lat, lng = move(*bikes[bike_id])
         bikes[bike_id] = [lat, lng]
 
-        speed = random.randint(40, 70)  # km/h
+        speed = random.randint(5, 20)  # km/h
         res = requests.post(URL, json={
     'bike_id': bike_id,
     'latitude': lat,
@@ -32,4 +32,4 @@ while True:
 
         print(f"[{bike_id}] Sent location ({lat:.5f}, {lng:.5f}) | Alert: {res.json().get('alert')}")
     
-    time.sleep(3)
+    time.sleep(2)
